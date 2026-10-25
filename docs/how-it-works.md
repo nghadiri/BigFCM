@@ -62,10 +62,10 @@ After the job, `PwfcmDriver.last_run` reads `part-r-00000` and runs one more WFC
 
 The code is kept as published. Here are some places where it behaves differently from the simplest reading of the algorithm. They matter if you plan to extend it.
 
-- **Two pre-clustering variants, one is always used.** `RunJob` times two variants of the sample clustering (`Instance` 0: one FCM pass over the whole sample; `Instance` 1: chunks of `C` records merged with WFCM). Both outcomes of the comparison set `Instance` to 1, and the value is set after the `Job` has copied the configuration. The combiner also reads the key `instance` (lowercase), which is never set, and then overwrites its `divider` with the number of records it received. In practice the combiner clusters everything it receives in one pass.
+- **Variant selection.** `RunJob` times two pre-clustering variants (`Instance` 0: one FCM pass over the whole sample; `Instance` 1: chunks of `C` records merged with WFCM) and passes the faster one to the job as `Instance`. The combiner uses the same convention for its own partition. Both variants write the same `initialize_center` file, so the seeds in the cache always come from the `Instance` 1 run, whichever variant was selected.
 - **Single group.** The mapper's key is `counter % 1`, which is always 0. All records share one key, so the work is split by map-side combining over input splits, not by key partitioning.
 - **Combiner semantics.** Hadoop may run a combiner zero, one or several times per map task. The design assumes it runs; if you adapt it, make the combiner optional-safe or run the logic in the mapper.
 - **Weight rounding.** The combiner rounds its weights to integers (`round_normal_center_weight`).
-- **Sampling input format.** The driver's sampler (`prepare_str_2`) splits on a comma, takes lines from the *last* file listed in the input directory, and keeps roughly half of the leading lines via a coin flip until it has enough. The mapper, in contrast, honours the `<separator>` argument.
-- **Hard-coded cache path.** Seeds are written to `/usr/local/hadoop/sample/initialize_center`. Change this in `RunJob` for your environment.
+- **Sampling input.** The driver's sampler (`prepare_str_2`) uses the `<separator>` argument, takes lines from the *last* file listed in the input directory, and keeps roughly half of the leading lines via a coin flip until it has enough.
+- **Seed location.** Seeds are written to `<output>_init/initialize_center` on HDFS (a sibling of the output directory, which must not exist beforehand).
 - **Single reducer.** With one key there is one reduce group. The paper discusses multi-reducer cascading; this code does not implement it.

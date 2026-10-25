@@ -39,6 +39,7 @@ public class PwfcmDriver {
   public int divider = 0;
   private Double[][] cluster_center_prev = null;
   int fiterations = 0;
+  private String separator = ",";
 
   public void initialize_vars(int num_centers, int dims, double fuzziness,
       double epsilon, int iter) {
@@ -216,7 +217,7 @@ public class PwfcmDriver {
     Random rand = new Random();
     int randomNum;
     while (l != null & counter < count) {
-      String[] str = l.split(",");
+      String[] str = l.split(separator);
       // System.out.println(l);
       // String[] str = l.split(" ");
       randomNum = rand.nextInt(2);
@@ -246,7 +247,7 @@ public class PwfcmDriver {
     int rand_center = 0;
     int y = 0;
     for (int i = 0; i < num_of_points; i++) {
-      String[] str_sp = tuples_a.get(i).split(",");
+      String[] str_sp = tuples_a.get(i).split(separator);
       // String[] str_sp = tuples_a.get(i).split(" ");
       rand_center = -1;
       if (y < num_of_centroids) {
@@ -496,18 +497,9 @@ public class PwfcmDriver {
     conf.setInt("iterations", driver_iterations);
     conf.setInt("Thompson", driver_num_instance);
     conf.set("Seprator", Seperator_str);
-    Job job = Job.getInstance(conf, "JobName");
-    job.setJarByClass(PwfcmDriver.class);
-    job.setMapperClass(PwfcmMapper.class);
-    job.setMapOutputKeyClass(IntWritable.class);
-    job.setMapOutputValueClass(Text.class);
-    job.setCombinerClass(PwfcmCombiner.class);
+    separator = Seperator_str;
+    String seed_dir = output + "_init";
 
-    job.setReducerClass(PwfcmReducer.class);
-    job.setOutputKeyClass(Text.class);
-    job.setOutputValueClass(Text.class);
-    FileInputFormat.addInputPath(job, new Path(input));
-    FileOutputFormat.setOutputPath(job, new Path(output));
     FileSystem fs = FileSystem.get(conf);
     RemoteIterator<LocatedFileStatus> fileStatusListIterator =
         fs.listFiles(new Path(input), false);
@@ -520,23 +512,34 @@ public class PwfcmDriver {
         driver_epsilon, driver_iterations);
 
     long first_StartTime = System.currentTimeMillis();
-    first_run(str, driver_num_instance, driver_centers,
-        "/usr/local/hadoop/sample", 0);
+    first_run(str, driver_num_instance, driver_centers, seed_dir, 0);
     long first_EndTime = System.currentTimeMillis();
 
     long Second_StartTime = System.currentTimeMillis();
-    first_run(str, driver_num_instance, driver_centers,
-        "/usr/local/hadoop/sample", 1);
+    first_run(str, driver_num_instance, driver_centers, seed_dir, 1);
     long Second_EndTime = System.currentTimeMillis();
-    
+
+    // The variant must be chosen before the Job copies the configuration.
     if (first_EndTime - first_StartTime > Second_EndTime - Second_StartTime) {
       conf.setInt("Instance", 1);
     } else {
-      conf.setInt("Instance", 1);
+      conf.setInt("Instance", 0);
     }
 
-    job.addCacheFile(new Path("/usr/local/hadoop/sample/initialize_center")
-        .toUri());
+    Job job = Job.getInstance(conf, "JobName");
+    job.setJarByClass(PwfcmDriver.class);
+    job.setMapperClass(PwfcmMapper.class);
+    job.setMapOutputKeyClass(IntWritable.class);
+    job.setMapOutputValueClass(Text.class);
+    job.setCombinerClass(PwfcmCombiner.class);
+
+    job.setReducerClass(PwfcmReducer.class);
+    job.setOutputKeyClass(Text.class);
+    job.setOutputValueClass(Text.class);
+    FileInputFormat.addInputPath(job, new Path(input));
+    FileOutputFormat.setOutputPath(job, new Path(output));
+
+    job.addCacheFile(new Path(seed_dir + "/initialize_center").toUri());
 
     if (!job.waitForCompletion(true)) {
       System.out.println("finished unnormally!");
