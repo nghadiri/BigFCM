@@ -45,7 +45,7 @@ Records with a different number of fields than `dims` are skipped.
 
 ### Input
 
-One record per line, `dims` numeric fields. The pre-clustering sampler expects comma-separated values (see [implementation notes](how-it-works.md#implementation-notes)), so a comma separator is the safe choice.
+One record per line, `dims` numeric fields. The same `separator` is used by the pre-clustering sampler and the mapper.
 
 ### Output
 
@@ -53,7 +53,7 @@ One record per line, `dims` numeric fields. The pre-clustering sampler expects c
 |---|---|
 | `<output>/part-r-00000` | Weighted centers from the reducer |
 | `<output>/real_out` | Final `C` centers, one per line, space-separated |
-| `/usr/local/hadoop/sample/initialize_center` | Seed centers written by the driver (hard-coded path) |
+| `<output>_init/initialize_center` | Seed centers written by the driver |
 
 ## Run the evaluation harness
 

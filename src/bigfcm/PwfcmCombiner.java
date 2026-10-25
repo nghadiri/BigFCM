@@ -43,22 +43,23 @@ public class PwfcmCombiner extends
     fuzziness = context.getConfiguration().getDouble("fuzziness", 0.0);
     epsilon = context.getConfiguration().getDouble("Epsilon", 0.0);
     fiteration = context.getConfiguration().getInt("iterations", 0);
-    instance = context.getConfiguration().getInt("instance", 0);
+    instance = context.getConfiguration().getInt("Instance", 0);
     CountThompsonFormula =
  context.getConfiguration().getInt("Thompson", 0);
 
-    if (instance == 0) {
-      divider = Integer.MAX_VALUE;
-    } else {
-      divider = CountThompsonFormula;
-    }
     StringBuilder out_str = new StringBuilder();
     tuples_a = new Vector<String>();
     for (Text text_list : values) {
       tuples_a.add(text_list.toString());
     }
     num_of_points = tuples_a.size();
-    divider = num_of_points;
+    // Instance 0: one FCM pass over all records; 1: chunks of C records
+    // merged by weighted FCM (same convention as PwfcmDriver.first_run).
+    if (instance == 1) {
+      divider = Math.min(num_of_centroids, num_of_points);
+    } else {
+      divider = num_of_points;
+    }
     reminder = num_of_points / divider;
     prepare_mat();
     // process values
@@ -116,7 +117,6 @@ public class PwfcmCombiner extends
           out_str.append(" ");
         }
         out_str.append(Double.toString(center_weight[i]));
-        System.out.println("in combiner " + out_str.toString());
         context.write(_key, new Text(out_str.toString()));
       }
     }
